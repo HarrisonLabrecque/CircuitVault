@@ -7,10 +7,13 @@ Initializes:
     - SQLite database
     - Application stylesheet
     - Main window
+
+Supports:
+    - Development execution
+    - PyInstaller one-file executable
 """
 
 import sys
-
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -29,9 +32,27 @@ from database.database import DatabaseManager
 APP_NAME = "CircuitVault"
 APP_VERSION = "0.1.0"
 
-BASE_DIR = Path(__file__).resolve().parent
 
-STYLESHEET_PATH = BASE_DIR / "styles" / "main.qss"
+def get_resource_path(relative_path):
+    """
+    Return the path to an application resource.
+
+    Development:
+        Resources are loaded from the project directory.
+
+    PyInstaller:
+        Resources are loaded from the bundled extraction directory.
+    """
+
+    if getattr(sys, "frozen", False):
+        base_dir = Path(sys._MEIPASS)
+    else:
+        base_dir = Path(__file__).resolve().parent
+
+    return base_dir / relative_path
+
+
+STYLESHEET_PATH = get_resource_path("styles/main.qss")
 
 
 # ============================================================
@@ -50,9 +71,8 @@ def main():
     # Initialize SQLite Database
     # --------------------------------------------------------
 
-    database = DatabaseManager()
-
     try:
+        database = DatabaseManager()
         database.initialize_database()
 
     except Exception as error:
@@ -60,7 +80,10 @@ def main():
         QMessageBox.critical(
             None,
             "Database Initialization Error",
-            f"Unable to initialize CircuitVault database:\n{error}"
+            (
+                "Unable to initialize CircuitVault database:\n\n"
+                f"{error}"
+            )
         )
 
         return 1
@@ -69,7 +92,7 @@ def main():
     # Load Application Stylesheet
     # --------------------------------------------------------
 
-    if STYLESHEET_PATH.exists():
+    if STYLESHEET_PATH.is_file():
 
         try:
             with STYLESHEET_PATH.open(
@@ -80,10 +103,19 @@ def main():
                 app.setStyleSheet(stylesheet.read())
 
         except OSError as error:
-            print(f"Unable to load stylesheet: {error}")
+
+            print(
+                f"Unable to load CircuitVault stylesheet: {error}",
+                file=sys.stderr
+            )
 
     else:
-        print("Warning: CircuitVault stylesheet not found.")
+
+        print(
+            f"Warning: CircuitVault stylesheet not found: "
+            f"{STYLESHEET_PATH}",
+            file=sys.stderr
+        )
 
     # --------------------------------------------------------
     # Create Main Window

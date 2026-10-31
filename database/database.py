@@ -10,8 +10,15 @@ Handles:
     - Project storage
     - Sensor reading storage
     - Dashboard statistics
+
+Supports:
+    - Development database storage
+    - Persistent packaged application storage
+    - Isolated test databases
 """
 
+import os
+import sys
 import sqlite3
 
 from pathlib import Path
@@ -24,8 +31,42 @@ from contextlib import contextmanager
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DATABASE_DIR = BASE_DIR / "data"
-DATABASE_PATH = DATABASE_DIR / "circuitvault.db"
+
+def get_database_path():
+    """
+    Return the appropriate SQLite database path.
+
+    Development:
+        CircuitVault/data/circuitvault.db
+
+    PyInstaller:
+        %LOCALAPPDATA%/CircuitVault/circuitvault.db
+    """
+
+    if getattr(sys, "frozen", False):
+
+        local_app_data = os.environ.get("LOCALAPPDATA")
+
+        if local_app_data:
+
+            database_dir = (
+                Path(local_app_data) / "CircuitVault"
+            )
+
+        else:
+
+            database_dir = (
+                Path.home() / "CircuitVault"
+            )
+
+    else:
+
+        database_dir = BASE_DIR / "data"
+
+    return database_dir / "circuitvault.db"
+
+
+DATABASE_PATH = get_database_path()
 
 
 # ============================================================
@@ -37,7 +78,11 @@ class DatabaseManager:
 
     def __init__(self, database_path=None):
 
-        self.database_path = Path(database_path) if database_path else DATABASE_PATH
+        self.database_path = (
+            Path(database_path)
+            if database_path is not None
+            else get_database_path()
+        )
 
         self.database_path.parent.mkdir(
             parents=True,
@@ -52,21 +97,30 @@ class DatabaseManager:
     def get_connection(self):
         """Provide a SQLite connection with transaction handling."""
 
-        connection = sqlite3.connect(self.database_path)
+        connection = sqlite3.connect(
+            self.database_path
+        )
 
         connection.row_factory = sqlite3.Row
 
-        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute(
+            "PRAGMA foreign_keys = ON"
+        )
 
         try:
+
             yield connection
+
             connection.commit()
 
         except Exception:
+
             connection.rollback()
+
             raise
 
         finally:
+
             connection.close()
 
     # --------------------------------------------------------
@@ -172,13 +226,13 @@ class DatabaseManager:
                     quantity_used INTEGER NOT NULL DEFAULT 1
                         CHECK(quantity_used > 0),
 
-                    PRIMARY KEY(project_id, component_id),
+                    PRIMARY KEY (project_id, component_id),
 
-                    FOREIGN KEY(project_id)
+                    FOREIGN KEY (project_id)
                         REFERENCES projects(id)
                         ON DELETE CASCADE,
 
-                    FOREIGN KEY(component_id)
+                    FOREIGN KEY (component_id)
                         REFERENCES components(id)
                         ON DELETE CASCADE
 
@@ -206,7 +260,7 @@ class DatabaseManager:
 
                     timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
 
-                    FOREIGN KEY(device_id)
+                    FOREIGN KEY (device_id)
                         REFERENCES devices(id)
                         ON DELETE CASCADE
 
@@ -282,10 +336,16 @@ if __name__ == "__main__":
 
     statistics = database.get_dashboard_statistics()
 
-    print("CircuitVault database initialized successfully.")
-    print(f"Database location: {database.database_path}")
+    print(
+        "CircuitVault database initialized successfully."
+    )
+
+    print(
+        f"Database location: {database.database_path}"
+    )
 
     print("\nDashboard Statistics")
 
     for key, value in statistics.items():
+
         print(f"{key}: {value}")
