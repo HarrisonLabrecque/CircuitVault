@@ -1,0 +1,11 @@
+# CircuitVault v0.1.0
+# Application Dependencies
+
+PySide6
+psutil
+zeroconf
+pyserial
+
+# Testing Dependencies
+pytest
+pytest-qt
