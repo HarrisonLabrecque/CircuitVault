@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 from app.pages.dashboard_page import DashboardPage
 from app.pages.components_page import ComponentsPage
 from app.pages.devices_page import DevicesPage
+from app.pages.sensors_page import SensorsPage
 
 
 class MainWindow(QMainWindow):
@@ -89,10 +90,8 @@ class MainWindow(QMainWindow):
         self.dashboard_page = DashboardPage()
         self.components_page = ComponentsPage()
         self.devices_page = DevicesPage()
+        self.sensors_page = SensorsPage()
 
-        self.sensors_page = self.create_placeholder_page(
-            "Sensors"
-        )
         self.projects_page = self.create_placeholder_page(
             "Projects"
         )
@@ -137,6 +136,9 @@ class MainWindow(QMainWindow):
 
         elif index == 2:
             self.devices_page.refresh_devices()
+
+        elif index == 3:
+            self.sensors_page.refresh_readings()
 
     def create_placeholder_page(self, page_name):
         """Create a placeholder for future functionality."""

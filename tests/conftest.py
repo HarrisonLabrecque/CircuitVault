@@ -2,12 +2,11 @@
 CircuitVault - Pytest Configuration
 Version: 0.1.0
 
-Shared fixtures for:
-    - SQLite database tests
-    - Component repository tests
-    - Components page tests
-    - Device repository tests
-    - Devices page tests
+Shared testing fixtures for:
+    - Database
+    - Components
+    - Devices
+    - Sensors
 """
 
 import pytest
@@ -15,14 +14,20 @@ import pytest
 from database.database import DatabaseManager
 from database.component_repository import ComponentRepository
 from database.device_repository import DeviceRepository
+from database.sensor_repository import SensorRepository
 
 from app.pages.components_page import ComponentsPage
 from app.pages.devices_page import DevicesPage
+from app.pages.sensors_page import SensorsPage
 
+
+# ============================================================
+# DATABASE FIXTURES
+# ============================================================
 
 @pytest.fixture
 def test_database(tmp_path):
-    """Create a fresh temporary SQLite database for each test."""
+    """Create an isolated SQLite database for each test."""
 
     database_path = tmp_path / "test_circuitvault.db"
 
@@ -45,7 +50,7 @@ def component_repository(test_database):
 
 @pytest.fixture
 def sample_component():
-    """Return a sample electronic component."""
+    """Return sample electronic component information."""
 
     return {
         "name": "MPU6050",
@@ -61,7 +66,7 @@ def sample_component():
 
 @pytest.fixture
 def components_page(qtbot, component_repository):
-    """Create a Components page with the test repository."""
+    """Create a Components page with an isolated repository."""
 
     page = ComponentsPage()
 
@@ -100,9 +105,51 @@ def sample_device():
 
 @pytest.fixture
 def devices_page(qtbot, device_repository):
-    """Create a Devices page using the temporary database."""
+    """Create a Devices page using an isolated repository."""
 
     page = DevicesPage(repository=device_repository)
+
+    qtbot.addWidget(page)
+
+    return page
+
+
+# ============================================================
+# SENSOR FIXTURES
+# ============================================================
+
+@pytest.fixture
+def sensor_repository(test_database):
+    """Create a sensor repository using the test database."""
+
+    return SensorRepository(database=test_database)
+
+
+@pytest.fixture
+def registered_device(device_repository, sample_device):
+    """Register a device for sensor measurement tests."""
+
+    return device_repository.add_device(sample_device)
+
+
+@pytest.fixture
+def sample_reading(registered_device):
+    """Return a sample MPU6050 measurement."""
+
+    return {
+        "device_id": registered_device,
+        "sensor_name": "MPU6050",
+        "metric": "Acceleration X",
+        "value": 0.12,
+        "unit": "g",
+    }
+
+
+@pytest.fixture
+def sensors_page(qtbot, sensor_repository):
+    """Create a Sensors page using an isolated repository."""
+
+    page = SensorsPage(repository=sensor_repository)
 
     qtbot.addWidget(page)
 
